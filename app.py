@@ -1,0 +1,88 @@
+from threading import Thread
+
+from flask import Flask, abort, request
+from flask_socketio import SocketIO, emit, join_room, send
+
+import sql
+
+app = Flask(__name__)
+app.secret_key = sql.idGenerator(range_=20)
+app.config['CORS_HEADERS'] = 'Content-Type'
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+
+@app.route('/')
+def g():
+    print('f')
+    return {"status": True}
+
+
+@app.route('/login', methods=["POST"])
+def login():
+    data = request.headers
+    if data.get('username') and data.get('token'):
+        if (sql.authenticateUserLogin(username=data.get('Username'), token=data.get('Token'), client_id=data.get('Client_id'))):
+            return {"status": True, "cre": sql.nameFromId(data.get('username'))}
+        else:
+            return {"status": False}
+    else:
+        abort(400)
+
+
+@app.route("/chats")
+def chats():
+    data = request.headers
+    if data.get('username') and data.get('token'):
+        if (sql.authenticateUserLogin(username=data.get('username'), token=data.get('token'), client_id=data.get('client_id'))):
+            return{"chats": sql.getChatsUnreadMessages(data.get('username')), 'chatsList': sql.getChatListOnly(data.get('username'))}
+        else:
+            abort(404)
+    else:
+        abort(400)
+
+
+@app.route('/msgs', methods=['POST'])
+def msgs():
+    headerData = request.headers
+    if headerData.get('username') and headerData.get('token') and headerData.get('chat_id'):
+        return({"msg": sql.getMessages(headerData.get('username'), headerData.get('chat_id')), "name": sql.nameFromId(headerData.get('chat_id'))['name']})
+
+    else:
+        abort(404)
+
+
+@app.route('/loginAuth')
+def loginAuth():
+    data = request.headers
+    if (data.get('username') and data.get('password')):
+        work = sql.loginUser(data.get('username'), data.get('password'))
+        if work:
+            return work
+        else:
+            abort(400)
+    else:
+        abort(404)
+
+
+@socketio.on('send_msg')
+def send_msg(data):
+    work = sql.message(msg=data.get('msg'), receiver_id=data.get(
+        'receiver_id'), sender_id=data.get('sender_id'))
+    if work:
+        [Thread(emit('msg_sent',work,to = i)).start() for i in sql.connectedUsersId(data.get('receiver_id'))]
+        [Thread(emit('msg_sent',work,to = i)).start() for i in sql.connectedUsersId(data.get('sender_id'))]
+
+
+
+@socketio.on('connected')
+def connected(data):
+    work = sql.userConnected(data.get('id'), data.get('username'))
+
+
+@socketio.on("disconnect")
+def userDisconnected():
+    work = sql.disconnectUser(request.sid)
+
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
