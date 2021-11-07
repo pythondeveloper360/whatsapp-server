@@ -8,11 +8,11 @@ from psycopg2 import sql
 alphabet = [*[chr(i) for i in range(97, 123)], *[chr(i)
                                                  for i in range(65, 91)], *[chr(i) for i in range(48, 58)]]
 
-db = psycopg2.connect(host="localhost",
-                      user="postgres",
-                      database="whatsapp",
+db = psycopg2.connect(host="ec2-35-169-49-157.compute-1.amazonaws.com",
+                      user="iurlzkxbhmfdip",
+                      database="d4epsggrgdjujf",
                       port="5432",
-                      password="qsa-1299")
+                      password="682e55ddb3082c1c36888b8eabbc99431dee88724f543bb226a4b12e9bc510f8")
 
 cursor = db.cursor()
 
