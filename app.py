@@ -1,6 +1,6 @@
 from threading import Thread
 
-from flask import Flask, abort, jsonify, request
+from flask import Flask, abort, jsonify, request,make_response
 from flask_socketio import SocketIO, emit, join_room, send
 
 import sql
@@ -10,6 +10,23 @@ app.secret_key = sql.idGenerator(range_=20)
 app.config['CORS_HEADERS'] = 'Content-Type'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+
+@app.after_request
+def after_request_func(response):
+    origin = request.headers.get('Origin')
+    if request.method == 'OPTIONS':
+        # TODO i think I need to add content-type header in access-control-allow-headers on post requests
+        response = make_response()
+
+        response.headers.add("Access-Control-Allow-Origin", origin)
+        response.headers.add('Access-Control-Allow-Headers',
+                             'Content-type, username,password,token,client_id,device_name')
+        response.headers.add('Access-Control-Allow-Methods',
+                             'GET, POST, OPTIONS, PUT, PATCH, DELETE')
+    else:
+        pass
+
+    return response
 
 @app.route('/login', methods=["POST"])
 def login():
@@ -69,7 +86,10 @@ def loginAuth():
             abort(400)
     else:
         abort(404)
-
+@app.route('/create_account')
+def createAccount():
+    data = request.headers
+    print(data)
 
 @socketio.on('send_msg')
 def send_msg(data):
